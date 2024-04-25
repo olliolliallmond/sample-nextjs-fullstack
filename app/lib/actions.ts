@@ -1,6 +1,9 @@
 'use server';
 
 import { z } from 'zod'; // TS validation library
+import { sql } from '@vercel/postgres';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 const FormSchema = z.object({
   id: z.string(),
@@ -24,10 +27,17 @@ export async function createInvoice(formData: FormData) {
 
   // capture date, split at 'T' to keep date and exclude time
   const date = new Date().toISOString().split('T')[0]
-  console.log("date: " + date)
+
+  await sql`
+    INSERT INTO invoices (customer_id, amount, status, date)
+    VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+  `;
+
+  // revalidate invoice path on server with fresh data then redirect to that path
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
 
   // const rawFormData = Object.fromEntries(formData.entries())
-
   // Console log visible in dev terminal running app
   // console.log(rawFormData);
 }
